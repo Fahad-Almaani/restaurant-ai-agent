@@ -1,6 +1,5 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 from prompts.upselling_prompts import (
     UPSELLING_AGENT_PROMPT, UPSELLING_SUGGESTIONS, UPSELLING_RESPONSES,
     get_upselling_prompt
@@ -8,6 +7,7 @@ from prompts.upselling_prompts import (
 from tools.validation_tools import sanitize_input
 from models.order_models import Order, OrderItem
 from config import Config
+from langchain_core.output_parsers import StrOutputParser
 import json
 import os
 
@@ -23,7 +23,7 @@ class UpsellingAgent:
             input_variables=["current_order", "available_upsells", "customer_input"],
             template=UPSELLING_AGENT_PROMPT
         )
-        self.upselling_chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
+        self.upselling_chain = self.prompt_template | self.llm | StrOutputParser()
 
     def load_upselling_rules(self):
         """Load upselling rules from file"""
@@ -107,13 +107,13 @@ class UpsellingAgent:
                 if rule_key in item_key:
                     available_upsells.extend(suggestions)
         
-        response = self.upselling_chain.run(
-            current_order=str(current_order),
-            available_upsells=', '.join(set(available_upsells)),
-            customer_input=sanitized_input
-        )
+        response_text = self.upselling_chain.invoke({
+            "current_order": str(current_order),
+            "available_upsells": ', '.join(set(available_upsells)),
+            "customer_input": sanitized_input
+        })
         
-        return response
+        return response_text
 
     def calculate_upsell_value(self, base_order_total: float, upsell_items: list):
         """Calculate potential value from upselling"""

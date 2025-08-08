@@ -1,12 +1,14 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+# from langchain.chains import LLMChain
 from agents.menu_agent import MenuAgent
 from agents.order_agent import OrderAgent
 from agents.upselling_agent import UpsellingAgent
 from models.order_models import Order, OrderItem
+from models.shared_memory import SharedMemory
 from tools.validation_tools import sanitize_input, validate_email, validate_phone_number
 from config import Config
+from langchain_core.output_parsers import StrOutputParser
 import os
 import re
 
@@ -20,7 +22,10 @@ class CoordinatorAgent:
         
         # Initialize sub-agents
         self.menu_agent = menu_agent or MenuAgent(self.llm)
-        self.order_agent = order_agent or OrderAgent(self.llm)
+        
+        # Create local shared memory for compatibility with updated OrderAgent
+        self.shared_memory = SharedMemory()
+        self.order_agent = order_agent or OrderAgent(self.llm, self.shared_memory)
         self.upselling_agent = upselling_agent or UpsellingAgent(self.llm)
         
         # Enhanced conversation state tracking
@@ -114,9 +119,10 @@ Return only: "DELIVERY", "PICKUP", or "UNCLEAR"
 """
         )
         
-        self.intent_chain = LLMChain(llm=self.llm, prompt=self.intent_detection_prompt)
-        self.completion_chain = LLMChain(llm=self.llm, prompt=self.completion_detection_prompt)
-        self.delivery_preference_chain = LLMChain(llm=self.llm, prompt=self.delivery_preference_prompt)
+        # Replace LLMChain with Runnable pipelines
+        self.intent_chain = self.intent_detection_prompt | self.llm | StrOutputParser()
+        self.completion_chain = self.completion_detection_prompt | self.llm | StrOutputParser()
+        self.delivery_preference_chain = self.delivery_preference_prompt | self.llm | StrOutputParser()
 
     def determine_intent_ai(self, user_input: str) -> str:
         """AI-powered intent detection that understands natural language completion signals"""
@@ -125,14 +131,14 @@ Return only: "DELIVERY", "PICKUP", or "UNCLEAR"
         
         try:
             # Use AI to determine intent
-            intent_response = self.intent_chain.invoke({
+            intent_text = self.intent_chain.invoke({
                 "user_input": sanitized_input,
                 "conversation_state": self.conversation_state,
                 "current_order": str(self.customer_order),
                 "has_items": has_items
             })
             
-            detected_intent = intent_response['text'].strip().lower()
+            detected_intent = str(intent_text).strip().lower()
             
             # Map AI response to our internal intent system
             if "order_complete" in detected_intent:
@@ -303,10 +309,10 @@ Return only: "DELIVERY", "PICKUP", or "UNCLEAR"
     def _handle_delivery_preference(self, user_input: str) -> str:
         """Handle delivery vs pickup preference"""
         try:
-            preference_response = self.delivery_preference_chain.invoke({
+            preference_text = self.delivery_preference_chain.invoke({
                 "user_input": user_input
             })
-            preference = preference_response['text'].strip().upper()
+            preference = str(preference_text).strip().upper()
             
             if "DELIVERY" in preference:
                 self.delivery_info['method'] = 'delivery'
@@ -361,12 +367,12 @@ Please provide your name and phone number.
             
             # Use AI to check if customer seems done or wants to continue
             try:
-                completion_response = self.completion_chain.invoke({
+                completion_text = self.completion_chain.invoke({
                     "user_input": user_input,
                     "order_summary": str(self.customer_order)
                 })
                 
-                completion_signal = completion_response['text'].strip().upper()
+                completion_signal = str(completion_text).strip().upper()
                 
                 if "COMPLETE" in completion_signal:
                     # Customer seems done, proceed to completion

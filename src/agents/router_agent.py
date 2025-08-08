@@ -1,7 +1,7 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 from langchain.output_parsers import PydanticOutputParser
+from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from tools.validation_tools import sanitize_input
@@ -144,8 +144,9 @@ Extract ALL items mentioned, not just one.
 """
         )
         
-        self.routing_chain = LLMChain(llm=self.llm, prompt=self.routing_prompt)
-        self.extraction_chain = LLMChain(llm=self.llm, prompt=self.item_extraction_prompt)
+        # Replace deprecated LLMChain with Runnable pipelines
+        self.routing_chain = self.routing_prompt | self.llm | self.route_parser
+        self.extraction_chain = self.item_extraction_prompt | self.llm | self.multi_item_parser
 
     def _load_menu(self):
         """Load menu data for intelligent matching"""
@@ -189,14 +190,11 @@ Extract ALL items mentioned, not just one.
             menu_context = self._format_menu_for_prompt()
             context_str = json.dumps(conversation_context, indent=2)
             
-            response = self.routing_chain.invoke({
+            route_decision: RouteDecision = self.routing_chain.invoke({
                 "user_input": sanitized_input,
                 "conversation_context": context_str,
                 "menu_items": menu_context
             })
-            
-            # Parse the structured output
-            route_decision = self.route_parser.parse(response["text"])
             
             # For order requests, extract items separately
             if route_decision.agent == "order":
@@ -216,13 +214,10 @@ Extract ALL items mentioned, not just one.
         try:
             menu_context = self._format_menu_for_prompt()
             
-            response = self.extraction_chain.invoke({
+            extraction_result: MultipleItemsExtraction = self.extraction_chain.invoke({
                 "user_input": user_input,
                 "menu_items": menu_context
             })
-            
-            # Parse the response
-            extraction_result = self.multi_item_parser.parse(response["text"])
             
             return extraction_result.items
             
@@ -393,13 +388,13 @@ Be helpful and specific in your suggestions.
         )
         
         try:
-            chain = LLMChain(llm=self.llm, prompt=ambiguity_prompt)
-            response = chain.invoke({
+            chain = ambiguity_prompt | self.llm | StrOutputParser()
+            response_text = chain.invoke({
                 "user_input": user_input,
                 "menu_items": self._format_menu_for_prompt()
             })
             
-            return json.loads(response["text"])
+            return json.loads(response_text)
         except:
             return {
                 "possible_meanings": ["Could be menu browsing", "Could be placing an order"],
@@ -429,14 +424,14 @@ Return up to 5 suggestions as a simple list.
         )
         
         try:
-            chain = LLMChain(llm=self.llm, prompt=suggestion_prompt)
-            response = chain.invoke({
+            chain = suggestion_prompt | self.llm | StrOutputParser()
+            response_text = chain.invoke({
                 "partial_input": partial_input,
                 "menu_items": self._format_menu_for_prompt()
             })
             
             # Parse suggestions from response
-            suggestions = [line.strip("- ").strip() for line in response["text"].split("\n") if line.strip()]
+            suggestions = [line.strip("- ").strip() for line in response_text.split("\n") if line.strip()]
             return suggestions[:5]
         except:
             return ["Browse our menu", "See popular items", "Get recommendations"]

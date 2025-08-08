@@ -1,7 +1,7 @@
 class Config:
     
     # AI Model Configuration
-    MODEL_NAME = "gemma-3-27b-it"
+    MODEL_NAME = "gemini-2.0-flash-lite"
     MODEL_TEMPERATURE = 0.7
     # MAX_TOKENS = 10000
     

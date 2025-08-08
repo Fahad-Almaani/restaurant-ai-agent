@@ -1,6 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.output_parsers import StrOutputParser
 from tools.menu_tools import (
     load_menu_from_file, get_default_menu, search_menu_items,
     get_menu_item_by_name, filter_menu_by_category, filter_menu_by_dietary,
@@ -23,7 +23,7 @@ class MenuAgent:
             input_variables=["menu", "customer_input"],
             template=MENU_AGENT_PROMPT
         )
-        self.menu_chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
+        self.menu_chain = self.prompt_template | self.llm | StrOutputParser()
 
     def load_menu(self):
         """Load menu from file or use default"""
@@ -70,9 +70,9 @@ class MenuAgent:
         """Handle customer menu-related queries using AI"""
         sanitized_input = sanitize_input(customer_input)
         
-        response = self.menu_chain.invoke({
+        response_text = self.menu_chain.invoke({
             "menu": format_menu_display(self.menu),
             "customer_input": sanitized_input
         })
         
-        return response["text"]
+        return response_text

@@ -1,6 +1,6 @@
-from langchain import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
+from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from tools.order_tools import (
@@ -79,7 +79,8 @@ Provide a structured response that's both informative and conversational.
 """
         )
         
-        self.order_chain = LLMChain(llm=self.llm, prompt=self.order_prompt)
+        # Replace deprecated LLMChain with Runnable pipeline
+        self.order_chain = self.order_prompt | self.llm | self.result_parser
 
     def _load_menu(self):
         """Load menu data for price lookup"""
@@ -100,6 +101,64 @@ Provide a structured response that's both informative and conversational.
                     menu_items.append(f"- {item['name']}: ${item['price']:.2f} - {item['description']}")
         return "\n".join(menu_items)
 
+    def _normalize_order_item(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Normalize an order item dict to ensure required fields are present.
+        Ensures we always have: name, quantity, price, customizations.
+        If price is missing, try to look it up from the menu.
+        """
+        # Determine name from possible keys
+        name = (
+            item.get("name") or
+            item.get("item_name") or
+            item.get("menu_name") or
+            item.get("title") or
+            item.get("product") or
+            ""
+        )
+        name = str(name).strip()
+        if not name:
+            return None
+        
+        # Quantity
+        quantity = item.get("quantity", 1)
+        try:
+            quantity = int(quantity)
+        except Exception:
+            quantity = 1
+        if quantity <= 0:
+            quantity = 1
+        
+        # Try to get a matching menu item for canonical name/price
+        menu_item = self._find_best_menu_match(name)
+        canonical_name = menu_item["name"] if menu_item else name
+        
+        # Price
+        price = item.get("price")
+        try:
+            price = float(price) if price is not None else None
+        except Exception:
+            price = None
+        if price is None or price <= 0:
+            price = float(menu_item.get("price", 0.0)) if menu_item else 0.0
+        
+        # Customizations
+        customizations = item.get("customizations") or item.get("mods") or item.get("notes") or []
+        if isinstance(customizations, str):
+            customizations = [customizations]
+        if not isinstance(customizations, list):
+            try:
+                customizations = list(customizations)
+            except Exception:
+                customizations = []
+        customizations = [str(c).strip() for c in customizations if str(c).strip()]
+        
+        return {
+            "name": canonical_name,
+            "quantity": quantity,
+            "price": price,
+            "customizations": customizations,
+        }
+
     def process_order_with_extracted_items(self, customer_input: str, extracted_items: List[Dict[str, Any]]) -> OrderProcessingResult:
         """
         Main order processing function that uses pre-extracted items from Router Agent
@@ -111,22 +170,29 @@ Provide a structured response that's both informative and conversational.
             extracted_items_str = json.dumps(extracted_items, indent=2)
             
             # Process through AI
-            response = self.order_chain.invoke({
+            result: OrderProcessingResult = self.order_chain.invoke({
                 "customer_input": customer_input,
                 "extracted_items": extracted_items_str,
                 "current_order": current_order_str,
                 "menu_context": menu_context
             })
             
-            # Parse structured result
-            result = self.result_parser.parse(response["text"])
+            # Normalize and update shared memory with successful items
+            normalized_added: List[Dict[str, Any]] = []
+            for raw_item in result.added_items:
+                normalized = self._normalize_order_item(raw_item)
+                if normalized:
+                    self.shared_memory.add_order_item(normalized)
+                    normalized_added.append(normalized)
             
-            # Update shared memory with successful items
-            for item in result.added_items:
-                self.shared_memory.add_order_item(item)
+            # Replace added_items with normalized ones so downstream has consistent structure
+            try:
+                result.added_items = normalized_added
+            except Exception:
+                pass
             
             # Update conversation state
-            if result.added_items:
+            if normalized_added:
                 self.shared_memory.set_customer_intent("ORDERING", "Items added to order")
             
             return result
@@ -146,6 +212,7 @@ Provide a structured response that's both informative and conversational.
             quantity = item_data.get("quantity", 1)
             confidence = item_data.get("confidence", 0.5)
             
+        
             # Try to find menu match
             menu_item = self._find_best_menu_match(item_name)
             
@@ -252,14 +319,14 @@ Provide a clear response about what you've changed and show the updated order.
         )
         
         try:
-            chain = LLMChain(llm=self.llm, prompt=modification_prompt)
-            response = chain.invoke({
+            chain = modification_prompt | self.llm | StrOutputParser()
+            response_text = chain.invoke({
                 "customer_input": customer_input,
                 "current_order": json.dumps(self.shared_memory.current_order, indent=2),
                 "menu_context": self._format_menu_for_context()
             })
             
-            return response["text"]
+            return response_text
         except:
             return "I'd be happy to help modify your order. Could you please tell me specifically what you'd like to change?"
 
