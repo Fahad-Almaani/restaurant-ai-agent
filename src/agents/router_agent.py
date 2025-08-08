@@ -5,6 +5,7 @@ from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from tools.validation_tools import sanitize_input
+from config import Config
 import os
 import json
 
@@ -34,7 +35,7 @@ class MultipleItemsExtraction(BaseModel):
 class RouterAgent:
     def __init__(self, llm=None, menu_data=None):
         self.llm = llm or ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model=Config.MODEL_NAME,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
             temperature=0.3  # Lower temperature for more consistent routing
         )

@@ -8,14 +8,15 @@ from tools.menu_tools import (
 )
 from prompts.menu_agent_prompts import MENU_AGENT_PROMPT, MENU_DISPLAY_PROMPT
 from tools.validation_tools import sanitize_input, validate_dietary_restrictions
+from config import Config
 import os
 
 class MenuAgent:
     def __init__(self, llm=None):
         self.llm = llm or ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model=Config.MODEL_NAME,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
-            temperature=0.7
+            temperature=Config.MODEL_TEMPERATURE
         )
         self.menu = self.load_menu()
         self.prompt_template = PromptTemplate(

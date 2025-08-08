@@ -7,13 +7,14 @@ from prompts.upselling_prompts import (
 )
 from tools.validation_tools import sanitize_input
 from models.order_models import Order, OrderItem
+from config import Config
 import json
 import os
 
 class UpsellingAgent:
     def __init__(self, llm=None):
         self.llm = llm or ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model=Config.MODEL_NAME,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
             temperature=0.8
         )

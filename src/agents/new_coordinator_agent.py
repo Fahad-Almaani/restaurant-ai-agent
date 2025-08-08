@@ -5,6 +5,7 @@ from agents.order_agent import OrderAgent
 from agents.upselling_agent import UpsellingAgent
 from models.shared_memory import SharedMemory
 from tools.validation_tools import sanitize_input
+from config import Config
 import os
 import uuid
 from typing import Tuple, Dict, Any
@@ -17,9 +18,9 @@ class NewCoordinatorAgent:
     
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model=Config.MODEL_NAME,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
-            temperature=0.7
+            temperature=Config.MODEL_TEMPERATURE
         )
         
         # Initialize shared memory for all agents

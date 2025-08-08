@@ -6,15 +6,16 @@ from agents.order_agent import OrderAgent
 from agents.upselling_agent import UpsellingAgent
 from models.order_models import Order, OrderItem
 from tools.validation_tools import sanitize_input, validate_email, validate_phone_number
+from config import Config
 import os
 import re
 
 class CoordinatorAgent:
     def __init__(self, menu_agent=None, order_agent=None, upselling_agent=None):
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model=Config.MODEL_NAME,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
-            temperature=0.7
+            temperature=Config.MODEL_TEMPERATURE
         )
         
         # Initialize sub-agents
