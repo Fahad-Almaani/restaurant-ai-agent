@@ -45,21 +45,33 @@ class NewCoordinatorAgent:
         Main conversation processing method - all inputs go through Router first
         """
         try:
-            # Step 1: Router Agent analyzes and routes the input
+            # Step 1: Global cancel check BEFORE routing (highest priority)
+            if self._is_cancel_intent(user_input, None):
+                response = self._handle_cancel_request(user_input, None)
+                self.shared_memory.add_to_history(user_input, response, "coordinator")
+                return response, self.shared_memory.to_dict()
+            
+            # Step 2: Router Agent analyzes and routes the input
             conversation_context = self.shared_memory.get_context_summary()
             route_decision = self.router_agent.route_conversation(user_input, conversation_context)
+
+            # Step 3: Double-check cancel intent from router decision as backup
+            if self._is_cancel_intent(user_input, route_decision):
+                response = self._handle_cancel_request(user_input, route_decision)
+                self.shared_memory.add_to_history(user_input, response, "coordinator")
+                return response, self.shared_memory.to_dict()
             
-            # Step 2: Check if human intervention is needed
+            # Step 4: Check if human intervention is needed
             if route_decision.agent == "human" or self.shared_memory.needs_human_intervention:
                 return self._handle_human_intervention(user_input, route_decision), self.shared_memory.to_dict()
             
-            # Step 3: Route to appropriate agent based on Router's decision
+            # Step 5: Route to appropriate agent based on Router's decision
             response = self._execute_agent_action(user_input, route_decision)
             
-            # Step 4: Add to conversation history
+            # Step 6: Add to conversation history
             self.shared_memory.add_to_history(user_input, response, route_decision.agent)
             
-            # Step 5: Post-processing and flow management
+            # Step 7: Post-processing and flow management
             response = self._post_process_response(response, route_decision)
             
             return response, self.shared_memory.to_dict()
@@ -248,7 +260,7 @@ class NewCoordinatorAgent:
                 self.shared_memory.set_customer_intent("GREETING", "Order cancelled by user")
                 self.shared_memory.conversation_stage = "greeting"
                 return "Your order has been cancelled. Would you like to start a new order?"
-        
+
         # Handle delivery method selection
         if route_decision.delivery_method:
             self.shared_memory.delivery_method = route_decision.delivery_method
@@ -322,6 +334,52 @@ class NewCoordinatorAgent:
             self.shared_memory.upsell_attempts += 1
         
         return response
+
+    def _is_cancel_intent(self, user_input: str, route_decision: RouteDecision) -> bool:
+        """Detect full-order cancellation regardless of conversation stage."""
+        try:
+            if getattr(route_decision, "user_intent", None) == "CANCEL_ORDER":
+                return True
+        except Exception:
+            pass
+
+        text = sanitize_input(user_input).lower().strip()
+        
+        # Check for simple cancel commands first
+        simple_cancel_words = ["cancel", "stop", "quit", "exit", "nevermind", "never mind", "forget it"]
+        if text in simple_cancel_words:
+            return True
+        
+        # Check for more complex cancel phrases
+        cancel_phrases = [
+            "cancel order",
+            "cancel my order", 
+            "cancel the order",
+            "i don't want to order anymore",
+            "i don't want to order any more",
+            "i don't want this order",
+            "nevermind the order",
+            "never mind the order",
+            "forget the order",
+            "void the order",
+            "stop the order",
+            "end the order",
+            "no thanks",
+            "not interested"
+        ]
+        return any(p in text for p in cancel_phrases)
+
+    def _handle_cancel_request(self, user_input: str, route_decision: RouteDecision) -> str:
+        """Clear the current order and reset state."""
+        if not self.shared_memory.current_order:
+            self.shared_memory.set_customer_intent("GREETING", "User requested cancel with no active order")
+            self.shared_memory.conversation_stage = "greeting"
+            return "There is no active order to cancel. Would you like to start a new order or see the menu?"
+        
+        self.shared_memory.clear_order()
+        self.shared_memory.set_customer_intent("GREETING", "Order cancelled by user")
+        self.shared_memory.conversation_stage = "greeting"
+        return "Your order has been cancelled. Would you like to start a new order or see the menu?"
 
     def reset_conversation(self):
         """Reset conversation state for new session"""
