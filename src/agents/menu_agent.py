@@ -70,9 +70,9 @@ class MenuAgent:
         """Handle customer menu-related queries using AI"""
         sanitized_input = sanitize_input(customer_input)
         
-        response = self.menu_chain.run(
-            menu=format_menu_display(self.menu),
-            customer_input=sanitized_input
-        )
+        response = self.menu_chain.invoke({
+            "menu": format_menu_display(self.menu),
+            "customer_input": sanitized_input
+        })
         
-        return response
+        return response["text"]
