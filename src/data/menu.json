@@ -1,0 +1,156 @@
+{
+  "appetizers": [
+    {
+      "id": "wings_buffalo",
+      "name": "Buffalo Wings",
+      "description": "Crispy chicken wings tossed in spicy buffalo sauce, served with celery and blue cheese",
+      "price": 8.99,
+      "category": "appetizers",
+      "dietary": [],
+      "popular": true,
+      "chef_recommendation": false,
+      "prep_time": 12,
+      "spice_level": 3
+    },
+    {
+      "id": "mozzarella_sticks",
+      "name": "Mozzarella Sticks",
+      "description": "Golden fried mozzarella cheese sticks with marinara dipping sauce",
+      "price": 7.99,
+      "category": "appetizers",
+      "dietary": ["vegetarian"],
+      "popular": true,
+      "chef_recommendation": false,
+      "prep_time": 8,
+      "spice_level": 0
+    }
+  ],
+  "mains": [
+    {
+      "id": "burger_classic",
+      "name": "Classic Burger",
+      "description": "Juicy beef patty with lettuce, tomato, onion, and our special sauce on a brioche bun",
+      "price": 12.99,
+      "category": "mains",
+      "dietary": [],
+      "popular": true,
+      "chef_recommendation": false,
+      "prep_time": 15,
+      "spice_level": 0
+    },
+    {
+      "id": "pizza_margherita",
+      "name": "Margherita Pizza",
+      "description": "Fresh mozzarella, tomato sauce, and basil on crispy thin crust",
+      "price": 14.99,
+      "category": "mains",
+      "dietary": ["vegetarian"],
+      "popular": true,
+      "chef_recommendation": true,
+      "prep_time": 18,
+      "spice_level": 0
+    },
+    {
+      "id": "pasta_carbonara",
+      "name": "Pasta Carbonara",
+      "description": "Creamy pasta with bacon, eggs, and parmesan cheese",
+      "price": 16.99,
+      "category": "mains",
+      "dietary": [],
+      "popular": true,
+      "chef_recommendation": true,
+      "prep_time": 20,
+      "spice_level": 0
+    },
+    {
+      "id": "salmon_grilled",
+      "name": "Grilled Salmon",
+      "description": "Fresh Atlantic salmon grilled to perfection with lemon herb butter",
+      "price": 19.99,
+      "category": "mains",
+      "dietary": ["gluten_free"],
+      "popular": false,
+      "chef_recommendation": true,
+      "prep_time": 22,
+      "spice_level": 0
+    }
+  ],
+  "salads": [
+    {
+      "id": "salad_caesar",
+      "name": "Caesar Salad",
+      "description": "Crisp romaine lettuce with parmesan, croutons, and caesar dressing",
+      "price": 9.99,
+      "category": "salads",
+      "dietary": ["vegetarian"],
+      "popular": false,
+      "chef_recommendation": false,
+      "prep_time": 8,
+      "spice_level": 0
+    },
+    {
+      "id": "salad_greek",
+      "name": "Greek Salad",
+      "description": "Fresh vegetables with feta cheese, olives, and olive oil dressing",
+      "price": 10.99,
+      "category": "salads",
+      "dietary": ["vegetarian", "gluten_free"],
+      "popular": true,
+      "chef_recommendation": false,
+      "prep_time": 10,
+      "spice_level": 0
+    }
+  ],
+  "beverages": [
+    {
+      "id": "soda_cola",
+      "name": "Coca Cola",
+      "description": "Classic refreshing cola",
+      "price": 2.99,
+      "category": "beverages",
+      "dietary": ["vegan"],
+      "popular": true,
+      "chef_recommendation": false,
+      "prep_time": 2,
+      "spice_level": 0
+    },
+    {
+      "id": "coffee_espresso",
+      "name": "Espresso",
+      "description": "Rich Italian espresso",
+      "price": 3.99,
+      "category": "beverages",
+      "dietary": ["vegan"],
+      "popular": false,
+      "chef_recommendation": false,
+      "prep_time": 3,
+      "spice_level": 0
+    }
+  ],
+  "desserts": [
+    {
+      "id": "cheesecake_ny",
+      "name": "New York Cheesecake",
+      "description": "Rich and creamy cheesecake with graham cracker crust",
+      "price": 6.99,
+      "category": "desserts",
+      "dietary": ["vegetarian"],
+      "popular": true,
+      "chef_recommendation": true,
+      "prep_time": 5,
+      "spice_level": 0
+    },
+    {
+      "id": "ice_cream_vanilla",
+      "name": "Vanilla Ice Cream",
+      "description": "Premium vanilla ice cream with your choice of toppings",
+      "price": 4.99,
+      "category": "desserts",
+      "dietary": ["vegetarian"],
+      "popular": false,
+      "chef_recommendation": false,
+      "prep_time": 3,
+      "spice_level": 0
+    }
+  ]
+}

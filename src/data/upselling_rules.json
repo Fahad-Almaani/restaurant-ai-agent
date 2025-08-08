@@ -1,0 +1,101 @@
+{
+  "upselling_rules": [
+    {
+      "item": "Burger",
+      "upsell_items": ["Fries", "Drink", "Extra Cheese"],
+      "suggestions": ["onion rings", "soft drink", "milkshake"],
+      "reasons": [
+        "Perfect side for your burger",
+        "Complements the flavors",
+        "Refreshing drink pairing"
+      ]
+    },
+    {
+      "item": "Pizza",
+      "upsell_items": ["Garlic Bread", "Drink", "Extra Toppings"],
+      "suggestions": ["caesar salad", "wine", "dessert"],
+      "reasons": [
+        "Great starter",
+        "Fresh contrast",
+        "Perfect pairing",
+        "Sweet finish"
+      ]
+    },
+    {
+      "item": "Pasta",
+      "upsell_items": ["Side Salad", "Drink", "Breadsticks"],
+      "suggestions": ["wine", "parmesan cheese", "side salad"],
+      "reasons": [
+        "Classic combination",
+        "Enhances the flavors",
+        "Extra richness",
+        "Light and fresh"
+      ]
+    },
+    {
+      "item": "Salad",
+      "upsell_items": ["Soup", "Drink", "Croutons"],
+      "suggestions": ["grilled chicken", "avocado", "bread rolls", "iced tea"],
+      "reasons": [
+        "Add protein",
+        "Healthy fats",
+        "Filling carbs",
+        "Refreshing drink"
+      ]
+    },
+    {
+      "item": "Dessert",
+      "upsell_items": ["Coffee", "Ice Cream", "Extra Toppings"]
+    }
+  ],
+  "combo_deals": {
+    "burger_combo": {
+      "items": ["burger", "fries", "drink"],
+      "price": 16.99,
+      "savings": 2.97,
+      "description": "Complete burger experience"
+    },
+    "pasta_special": {
+      "items": ["pasta", "garlic bread", "house wine"],
+      "price": 22.99,
+      "savings": 3.99,
+      "description": "Italian dinner perfection"
+    },
+    "family_feast": {
+      "items": ["pizza", "wings", "salad", "drinks"],
+      "price": 34.99,
+      "savings": 6.96,
+      "description": "Perfect for sharing"
+    }
+  },
+  "upsell_triggers": {
+    "order_value_low": {
+      "threshold": 15.0,
+      "suggestions": ["appetizer", "beverage"],
+      "message": "Would you like to start with an appetizer or add a refreshing beverage?"
+    },
+    "order_value_medium": {
+      "threshold": 25.0,
+      "suggestions": ["dessert", "upgrade_sides"],
+      "message": "How about finishing with one of our delicious desserts?"
+    },
+    "single_item": {
+      "suggestions": ["complete_meal"],
+      "message": "Would you like to make this a complete meal?"
+    }
+  },
+  "dietary_upsells": {
+    "vegetarian": {
+      "suggestions": ["veggie_burger", "quinoa_salad", "fruit_smoothie"],
+      "message": "We have some excellent vegetarian options that would complement your order!"
+    },
+    "gluten_free": {
+      "suggestions": ["grilled_salmon", "house_salad", "rice_bowl"],
+      "message": "Our gluten-free options are just as delicious!"
+    },
+    "vegan": {
+      "suggestions": ["quinoa_bowl", "veggie_wrap", "fresh_juice"],
+      "message": "Try our plant-based favorites!"
+    }
+  }
+}
