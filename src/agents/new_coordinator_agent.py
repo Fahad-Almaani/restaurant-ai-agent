@@ -111,9 +111,17 @@ class NewCoordinatorAgent:
 
     def _handle_order_request(self, user_input: str, route_decision: RouteDecision) -> str:
         """Handle order-related requests using extracted items from Router"""
-        self.shared_memory.set_customer_intent("ORDERING", "User placing order")
+        self.shared_memory.set_customer_intent("ORDERING", "User placing or modifying order")
+
+        # If router classified it as a modification, apply modifications deterministically
+        if route_decision.user_intent == "MODIFY_ORDER":
+            modification_result = self.order_agent.handle_order_modification(user_input)
+            # If we were waiting for delivery, keep the flow there
+            if self.shared_memory.conversation_stage == "awaiting_delivery":
+                return f"{modification_result}\n\nShall we proceed with delivery or pickup?"
+            return modification_result
         
-        # Use Router's extracted items for intelligent processing
+        # Use Router's extracted items for intelligent processing when placing/adding items
         if route_decision.extracted_items:
             result = self.order_agent.process_order_with_extracted_items(
                 user_input, route_decision.extracted_items
@@ -227,19 +235,13 @@ class NewCoordinatorAgent:
         # Check if user wants to change order instead of answering delivery question
         if route_decision.wants_order_change:
             if route_decision.user_intent == "MODIFY_ORDER":
-                # User wants to add more items
-                self.shared_memory.conversation_stage = "ordering"
-                self.shared_memory.set_customer_intent("ORDERING", "User adding more items")
+                # Apply modifications (remove/change quantities, etc.)
+                modification_result = self.order_agent.handle_order_modification(user_input)
+                # Stay in delivery stage after modification
+                self.shared_memory.conversation_stage = "awaiting_delivery"
+                self.shared_memory.set_customer_intent("DELIVERY_METHOD", "Waiting for delivery method choice")
+                return f"{modification_result}\n\nShall we proceed with delivery or pickup?"
                 
-                # Process any extracted items
-                if route_decision.extracted_items:
-                    result = self.order_agent.process_order_with_extracted_items(
-                        user_input, route_decision.extracted_items
-                    )
-                    return f"{result.message}\n\nYour order has been updated! Would you like to add anything else, or shall we proceed with delivery details?"
-                else:
-                    return "What would you like to add to your order?"
-                    
             elif route_decision.user_intent == "CANCEL_ORDER":
                 # User wants to cancel
                 self.shared_memory.clear_order()

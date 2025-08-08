@@ -13,6 +13,7 @@ from models.shared_memory import SharedMemory
 from prompts.order_agent_prompts import ORDER_AGENT_PROMPT
 import os
 import json
+import re
 
 class OrderProcessingResult(BaseModel):
     """Structured result for order processing"""
@@ -294,7 +295,134 @@ Provide a structured response that's both informative and conversational.
         return None
 
     def handle_order_modification(self, customer_input: str) -> str:
-        """Handle order modifications like removing or changing quantities"""
+        """Handle order modifications like removing or changing quantities.
+        This function now applies changes to shared memory before generating a response.
+        """
+        # Disallow edits once order is completed/confirmed
+        if self.shared_memory.conversation_stage == "completed" or self.shared_memory.order_status in ("COMPLETE", "CONFIRMED"):
+            return "The order has already been completed and can no longer be modified."
+
+        # Lightweight deterministic parsing for removals and quantity changes
+        original_items = json.dumps(self.shared_memory.current_order, sort_keys=True)
+        original_total = self.shared_memory.order_total
+        text = customer_input.strip().lower()
+
+        # Cancel entire order
+        if any(kw in text for kw in ["cancel my order", "cancel order", "cancel it", "forget my order", "abort order", "nevermind, cancel"]):
+            self.shared_memory.clear_order()
+            return "Your order has been cancelled. Would you like to start a new order?"
+
+        # Helper: find item in current order by best match
+        def find_order_item_by_text(name_text: str) -> Optional[Dict[str, Any]]:
+            # Try to map to canonical menu item name first
+            menu_item = self._find_best_menu_match(name_text)
+            target_name = menu_item["name"] if menu_item else name_text.strip()
+            # Exact name match
+            for it in self.shared_memory.current_order:
+                if it.get("name", "").lower() == target_name.lower():
+                    return it
+            # Fallback: partial contains
+            for it in self.shared_memory.current_order:
+                if target_name.lower() in it.get("name", "").lower() or it.get("name", "").lower() in target_name.lower():
+                    return it
+            return None
+
+        modified = False
+        changes: List[str] = []
+
+        # Patterns for removal like: remove 1 burger, remove the burger, delete salad, take off 2 cokes
+        removal_patterns = [
+            r"(?:remove|delete|take off|drop)\s+(?:the\s+)?(?:(\d+)\s+)?([a-zA-Z][a-zA-Z\s]+)"
+        ]
+        for pat in removal_patterns:
+            for qty_str, item_txt in re.findall(pat, text):
+                qty = int(qty_str) if qty_str.isdigit() else None
+                item = find_order_item_by_text(item_txt)
+                if item:
+                    if qty is None or qty >= item.get("quantity", 1):
+                        # Remove entire line
+                        self.shared_memory.current_order.remove(item)
+                        changes.append(f"removed {item.get('name')}")
+                    else:
+                        item["quantity"] = item.get("quantity", 1) - qty
+                        changes.append(f"reduced {item.get('name')} by {qty}")
+                    modified = True
+        
+        # Pattern for quantity set: make that 2 burgers, change burger to 3
+        qty_set_patterns = [
+            r"(?:make that|change|set)\s+(?:it|that|the\s+)?(?:(\d+)\s+)?([a-zA-Z][a-zA-Z\s]+?)s?(?:\b|$)",
+            r"(?:change|set)\s+([a-zA-Z][a-zA-Z\s]+?)\s+(?:to\s+)?(\d+)"
+        ]
+        for pat in qty_set_patterns:
+            for m in re.finditer(pat, text):
+                g1 = m.group(1)
+                g2 = m.group(2) if m.lastindex and m.lastindex >= 2 else None
+                if g2 and g1 and g1.isalpha():
+                    # pattern variant where order is (item, qty)
+                    item_txt, qty_str = g1, g2
+                else:
+                    qty_str = g1 if g1 and g1.isdigit() else g2
+                    item_txt = g2 if g2 and not g2.isdigit() else g1
+                if not qty_str or not item_txt:
+                    continue
+                try:
+                    new_qty = int(qty_str)
+                except:
+                    continue
+                if new_qty <= 0:
+                    new_qty = 0
+                item = find_order_item_by_text(item_txt)
+                if item:
+                    if new_qty == 0:
+                        self.shared_memory.current_order.remove(item)
+                        changes.append(f"removed {item.get('name')}")
+                    else:
+                        item["quantity"] = new_qty
+                        changes.append(f"set {item.get('name')} to {new_qty}")
+                    modified = True
+        
+        # If user says things like "no salad" and that exact item is in order, treat as removal
+        if not modified:
+            m = re.findall(r"\bno\s+([a-zA-Z][a-zA-Z\s]+)\b", text)
+            for item_txt in m:
+                item = find_order_item_by_text(item_txt)
+                if item:
+                    self.shared_memory.current_order.remove(item)
+                    changes.append(f"removed {item.get('name')}")
+                    modified = True
+        
+        # Update totals if changed
+        if modified:
+            # Remove any lines with non-positive quantity
+            self.shared_memory.current_order = [
+                it for it in self.shared_memory.current_order if it.get("quantity", 0) > 0
+            ]
+            self.shared_memory._update_order_total()
+            
+            # Build an updated summary
+            summary = self.get_order_summary()
+            parts = [
+                "✅ I've updated your order:",
+                ""
+            ]
+            for item_data in summary['items']:
+                q = item_data['quantity']
+                name = item_data['name']
+                up = item_data['unit_price']
+                tp = item_data['total_price']
+                if q == 1:
+                    parts.append(f"• {name} - ${up:.2f}")
+                else:
+                    parts.append(f"• {q}x {name} - ${up:.2f} each (${tp:.2f})")
+            parts.extend([
+                "",
+                f"💰 New total: ${summary['totals']['total']:.2f}"
+            ])
+            if changes:
+                parts.append("\nChanges: " + ", ".join(changes))
+            return "\n".join(parts)
+        
+        # If nothing deterministically modified, fall back to LLM assistant response
         modification_prompt = PromptTemplate(
             input_variables=["customer_input", "current_order", "menu_context"],
             template="""
@@ -325,7 +453,6 @@ Provide a clear response about what you've changed and show the updated order.
                 "current_order": json.dumps(self.shared_memory.current_order, indent=2),
                 "menu_context": self._format_menu_for_context()
             })
-            
             return response_text
         except:
             return "I'd be happy to help modify your order. Could you please tell me specifically what you'd like to change?"

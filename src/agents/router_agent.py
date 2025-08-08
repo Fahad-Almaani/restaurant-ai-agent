@@ -66,7 +66,7 @@ Analyze the user input and determine:
 1. **Intent Classification**: What does the user want to do?
    - BROWSE_MENU: User wants to see menu, get recommendations, or learn about items
    - PLACE_ORDER: User wants to order specific items
-   - MODIFY_ORDER: User wants to change existing order
+   - MODIFY_ORDER: User wants to change existing order (remove items, change quantity, add notes)
    - FINALIZE_ORDER: User is done ordering and wants to complete/pay
    - DELIVERY_METHOD: User is answering delivery/pickup question
    - ASK_QUESTION: User has general questions about food, ingredients, etc.
@@ -74,7 +74,7 @@ Analyze the user input and determine:
 
 2. **Agent Routing**: Route to appropriate agent:
    - menu: For browsing, recommendations, item information
-   - order: For placing orders, item extraction, customizations
+   - order: For placing orders, item extraction, customizations, and modifications
    - upselling: When order is placed and upselling is appropriate
    - finalization: When user indicates they're done ordering
    - delivery: For handling delivery questions and confirmations
@@ -85,6 +85,7 @@ Analyze the user input and determine:
    - "pickup", "pick up", "takeaway", "take away" → delivery_method: "pickup"
    - If user mentions adding items instead → wants_order_change: true, agent: "order"
    - If user wants to cancel → wants_order_change: true, agent: "finalization"
+   - If user wants to remove/change items → wants_order_change: true, agent: "order", user_intent: "MODIFY_ORDER"
 
 4. **Intelligent Matching**: For order requests, note items mentioned but don't extract them here:
    - "coc" or "coca" likely means "Coca Cola"
@@ -93,7 +94,7 @@ Analyze the user input and determine:
    - "cheesecake" could mean "New York Cheesecake"
 
 5. **Context Awareness**: Consider conversation stage:
-   - If context shows we're waiting for delivery method and user says anything about ordering → wants_order_change: true
+   - If context shows we're waiting for delivery method and user says anything about ordering or modifying → wants_order_change: true
    - If context shows we're finalizing and user gives clear delivery preference → agent: "delivery"
    - If user says "add", "more", "another", "also want" during delivery stage → wants_order_change: true
 
@@ -320,10 +321,20 @@ Extract ALL items mentioned, not just one.
                     extracted_items=[],
                     needs_clarification=False
                 )
+            # Modification intents during delivery question
             elif any(word in input_lower for word in ['add', 'more', 'another', 'also', 'want', 'order']):
                 return RouteDecision(
                     agent="order",
                     confidence=0.7,
+                    user_intent="MODIFY_ORDER",
+                    wants_order_change=True,
+                    extracted_items=self._manual_item_extraction(user_input),
+                    needs_clarification=False
+                )
+            elif any(word in input_lower for word in ['remove', 'delete', 'take off', 'drop', 'change', 'reduce']):
+                return RouteDecision(
+                    agent="order",
+                    confidence=0.75,
                     user_intent="MODIFY_ORDER",
                     wants_order_change=True,
                     extracted_items=self._manual_item_extraction(user_input),
@@ -346,6 +357,9 @@ Extract ALL items mentioned, not just one.
         elif any(word in input_lower for word in ['order', 'want', 'get', 'buy', 'take']):
             agent = "order"
             intent = "PLACE_ORDER"
+        elif any(word in input_lower for word in ['remove', 'delete', 'take off', 'drop', 'change', 'reduce']):
+            agent = "order"
+            intent = "MODIFY_ORDER"
         elif any(word in input_lower for word in ['done', 'finish', 'complete', 'pay', 'checkout']):
             agent = "finalization"
             intent = "FINALIZE_ORDER"
@@ -355,7 +369,7 @@ Extract ALL items mentioned, not just one.
         
         # For order requests, try manual extraction
         extracted_items = []
-        if agent == "order":
+        if agent == "order" and intent != "MODIFY_ORDER":
             extracted_items = self._manual_item_extraction(user_input)
         
         return RouteDecision(
