@@ -1,4 +1,5 @@
 import json
+import os
 from typing import List, Dict, Optional
 from models.menu_models import MenuItem, MenuCategory
 
@@ -26,7 +27,8 @@ def load_menu_from_file(file_path: str) -> List[Dict]:
     except FileNotFoundError:
         return get_default_menu()
     except json.JSONDecodeError:
-        print("Error: Invalid JSON format in menu file. Using default menu.")
+        if os.getenv("DEBUG_MODE", "false").lower() == "true":
+            print("Error: Invalid JSON format in menu file. Using default menu.")
         return get_default_menu()
 
 def get_default_menu() -> List[Dict]:

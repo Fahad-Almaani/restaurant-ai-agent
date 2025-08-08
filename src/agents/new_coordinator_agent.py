@@ -37,7 +37,8 @@ class NewCoordinatorAgent:
         # Conversation session ID
         self.session_id = str(uuid.uuid4())
         
-        print("🤖 New Router-based Restaurant AI Agent initialized!")
+        if os.getenv("DEBUG_MODE", "false").lower() == "true":
+            print("🤖 New Router-based Restaurant AI Agent initialized!")
 
     def process_user_input(self, user_input: str) -> Tuple[str, Dict[str, Any]]:
         """
@@ -50,7 +51,7 @@ class NewCoordinatorAgent:
             
             # Step 2: Check if human intervention is needed
             if route_decision.agent == "human" or self.shared_memory.needs_human_intervention:
-                return self._handle_human_intervention(user_input, route_decision)
+                return self._handle_human_intervention(user_input, route_decision), self.shared_memory.to_dict()
             
             # Step 3: Route to appropriate agent based on Router's decision
             response = self._execute_agent_action(user_input, route_decision)
@@ -324,7 +325,8 @@ class NewCoordinatorAgent:
         """Reset conversation state for new session"""
         self.shared_memory = SharedMemory()
         self.session_id = str(uuid.uuid4())
-        print("🔄 Conversation reset. Starting fresh!")
+        if os.getenv("DEBUG_MODE", "false").lower() == "true":
+            print("🔄 Conversation reset. Starting fresh!")
 
     def get_conversation_state(self) -> Dict[str, Any]:
         """Get current conversation state for monitoring"""

@@ -159,7 +159,8 @@ Return only: "DELIVERY", "PICKUP", or "UNCLEAR"
                 return "ask_question"
                 
         except Exception as e:
-            print(f"AI intent detection failed: {e}")
+            if os.getenv("DEBUG_MODE", "false").lower() == "true":
+                print(f"AI intent detection failed: {e}")
             # Fallback to simple keyword detection
             return self._fallback_intent_detection(sanitized_input)
 

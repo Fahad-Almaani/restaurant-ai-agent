@@ -9,8 +9,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 
 from agents.new_coordinator_agent import NewCoordinatorAgent
-from langchain_google_genai import ChatGoogleGenerativeAI
 import uuid
+from utils.console import ConsoleUI
 
 class RestaurantAIAgent:
     def __init__(self):
@@ -19,95 +19,134 @@ class RestaurantAIAgent:
         if not self.api_key:
             raise ValueError("GOOGLE_API_KEY environment variable is required")
         
+        # Console UI
+        self.ui = ConsoleUI()
+        
         # Initialize the new Router-based coordinator
         self.coordinator = NewCoordinatorAgent()
         
         # Session management
         self.session_id = str(uuid.uuid4())
         
-        print("🤖 Router-based Restaurant AI Agent initialized successfully!")
-        print("🎯 All inputs now go through intelligent Router Agent first!")
+        # Runtime debug toggle
+        self.debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
+        
+        # Concise startup
+        self.ui.header("AI Bistro", "Router-powered assistant")
+        self.ui.info("Commands: /help, /menu, /reset, /debug, /state, quit")
 
     def start_conversation(self):
         """Start an interactive conversation with the customer"""
-        print("\n" + "="*60)
-        print("🍽️ WELCOME TO AI BISTRO - ROUTER-POWERED ASSISTANT 🍽️")
-        print("="*60)
-        print("🎯 Enhanced with intelligent routing!")
-        print("I can understand:")
-        print("• 'coc' or 'coca' → Coca Cola")
-        print("• 'burger' → Classic Burger")
-        print("• '2 burgers and 3 cokes' → Multiple items at once")
-        print("• Complex orders with customizations")
-        print("• Ambiguous requests that I'll clarify")
-        print("\nType 'quit' or 'exit' to end the conversation")
-        print("-"*60)
         
         # Initial greeting
         response, conversation_state = self.coordinator.process_user_input("hello")
-        print(f"\n🤖 AI Bistro: {response}")
+        self.ui.ai_response(response)
         
         # Main conversation loop
         while True:
             try:
-                user_input = input("\n👤 You: ").strip()
+                user_input = input("\nYou: ").strip()
                 
                 # Check for quit commands
                 if user_input.lower() in ['quit', 'exit']:
-                    print("\n🤖 AI Bistro: Thank you for visiting AI Bistro! Have a wonderful day! 🍽️")
+                    self.ui.ai_response("Thanks for visiting AI Bistro. Have a great day!")
                     break
                 
                 if not user_input:
-                    print("🤖 AI Bistro: I didn't catch that. Could you please say something?")
+                    self.ui.warn("I didn't catch that. Please say something.")
                     continue
+                
+                # Slash commands
+                if user_input.startswith("/"):
+                    handled = self._handle_command(user_input)
+                    if handled:
+                        continue
                 
                 # Process through the new Router-based system
                 response, conversation_state = self.coordinator.process_user_input(user_input)
                 
-                print(f"\n🤖 AI Bistro: {response}")
+                self.ui.ai_response(response)
                 
-                # Show debug info if in development mode
-                if os.getenv("DEBUG_MODE", "false").lower() == "true":
+                # Show debug info if enabled
+                if self.debug_mode:
                     self._show_debug_info(conversation_state)
                 
                 # Check if order is completed
                 if conversation_state.get("customer_intent") == "COMPLETED":
-                    print("\n" + "="*60)
-                    print("🎉 ORDER PROCESS COMPLETED! 🎉")
-                    print("="*60)
+                    # Show order summary in a table
+                    details = self.get_order_details()
+                    items = details.get("items", [])
+                    totals = details.get("totals", {})
+                    if items:
+                        self.ui.rule("Order Summary")
+                        self.ui.order_table(items, totals)
                     
                     # Ask if they want to place another order
-                    new_order = input("\nWould you like to place another order? (yes/no): ").strip().lower()
-                    if new_order in ['yes', 'y', 'sure', 'okay']:
+                    new_order = input("\nStart a new order? (y/n): ").strip().lower()
+                    if new_order in ['yes', 'y']:
                         self.coordinator.reset_conversation()
-                        print("\n🔄 Starting a new order...")
+                        self.ui.info("Starting a new order...")
                         response, _ = self.coordinator.process_user_input("hello")
-                        print(f"\n🤖 AI Bistro: {response}")
+                        self.ui.ai_response(response)
                     else:
-                        print("\n🤖 AI Bistro: Thank you for choosing AI Bistro! Have a wonderful day! 🍽️")
+                        self.ui.ai_response("Thank you for choosing AI Bistro!")
                         break
                 
                 # Handle human intervention requests
                 if conversation_state.get("needs_intervention"):
-                    print("\n🆘 Human operator has been notified and will assist shortly.")
+                    self.ui.warn("A human operator will assist shortly.")
                 
             except KeyboardInterrupt:
-                print("\n\n🤖 AI Bistro: Thank you for visiting! Have a great day! 🍽️")
+                self.ui.ai_response("Thanks for visiting AI Bistro. Goodbye!")
                 break
             except Exception as e:
-                print(f"\n❌ Sorry, I encountered an error: {str(e)}")
-                print("Please try again or contact our support team.")
+                self.ui.error(f"Error: {str(e)}")
+                self.ui.info("Please try again or contact support.")
+
+    def _handle_command(self, cmd: str) -> bool:
+        """Handle slash commands. Returns True if handled."""
+        name = cmd.lower().strip()
+        if name in ("/help", "/h"):
+            self.ui.ai_response("""
+            Available commands:\n
+            - /menu   Show the menu\n
+            - /state  Show current state\n
+            - /reset  Reset the conversation\n
+            - /debug  Toggle debug info\n
+            - quit    Exit the assistant
+            """.strip(), title="Help")
+            return True
+        if name == "/menu":
+            self.ui.ai_response(self.coordinator.menu_agent.display_menu(), title="Menu")
+            return True
+        if name == "/reset":
+            self.reset_conversation()
+            self.ui.success("Conversation reset.")
+            response, _ = self.coordinator.process_user_input("hello")
+            self.ui.ai_response(response)
+            return True
+        if name == "/debug":
+            self.debug_mode = not self.debug_mode
+            self.ui.info(f"Debug mode: {'ON' if self.debug_mode else 'OFF'}")
+            return True
+        if name == "/state":
+            state = self.coordinator.shared_memory.to_dict()
+            self._show_debug_info(state)
+            return True
+        
+        self.ui.warn("Unknown command. Type /help for options.")
+        return True
 
     def _show_debug_info(self, conversation_state):
         """Show debug information for development"""
-        print("\n" + "─"*40)
-        print("🔍 DEBUG INFO:")
-        print(f"Intent: {conversation_state.get('customer_intent', 'Unknown')}")
-        print(f"Stage: {conversation_state.get('conversation_stage', 'Unknown')}")
-        print(f"Order Items: {len(conversation_state.get('current_order', []))}")
-        print(f"Total: ${conversation_state.get('order_total', 0):.2f}")
-        print(f"Last Agent: {conversation_state.get('last_agent', 'None')}")
-        print("─"*40)
+        data = {
+            "Intent": conversation_state.get('customer_intent', 'Unknown'),
+            "Stage": conversation_state.get('conversation_stage', 'Unknown'),
+            "Order Items": len(conversation_state.get('current_order', [])),
+            "Total": f"${conversation_state.get('order_total', 0):.2f}",
+            "Last Agent": conversation_state.get('last_agent', 'None'),
+        }
+        self.ui.debug_table(data, title="Debug Info")
 
     def process_single_request(self, user_input: str) -> str:
         """Process a single request (useful for API integration)"""
@@ -148,7 +187,7 @@ class RestaurantAIAgent:
     def simulate_human_intervention(self, reason: str = "Testing intervention"):
         """Simulate human intervention for testing purposes"""
         self.coordinator.shared_memory.trigger_human_intervention(reason)
-        print(f"🆘 Human intervention triggered: {reason}")
+        self.ui.warn(f"Human intervention triggered: {reason}")
 
     def reset_conversation(self):
         """Reset the conversation state"""
@@ -193,12 +232,11 @@ def main():
         agent.start_conversation()
         
     except ValueError as e:
-        print(f"❌ Configuration Error: {e}")
-        print("Please make sure you have set up your environment variables correctly.")
-        print("Create a .env file with: GOOGLE_API_KEY=your_api_key_here")
+        ConsoleUI().error(f"Configuration Error: {e}")
+        ConsoleUI().info("Create a .env file with: GOOGLE_API_KEY=your_api_key_here")
     except Exception as e:
-        print(f"❌ Unexpected Error: {e}")
-        print("Please check your setup and try again.")
+        ConsoleUI().error(f"Unexpected Error: {e}")
+        ConsoleUI().info("Please check your setup and try again.")
 
 if __name__ == "__main__":
     main()

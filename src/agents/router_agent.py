@@ -206,7 +206,8 @@ Extract ALL items mentioned, not just one.
             return route_decision
             
         except Exception as e:
-            print(f"Router Agent error: {e}")
+            if os.getenv("DEBUG_MODE", "false").lower() == "true":
+                print(f"Router Agent error: {e}")
             # Fallback routing
             return self._fallback_routing(sanitized_input, conversation_context)
 
@@ -226,7 +227,8 @@ Extract ALL items mentioned, not just one.
             return extraction_result.items
             
         except Exception as e:
-            print(f"Item extraction error: {e}")
+            if os.getenv("DEBUG_MODE", "false").lower() == "true":
+                print(f"Item extraction error: {e}")
             # Fallback: try to extract items manually
             return self._manual_item_extraction(user_input)
 

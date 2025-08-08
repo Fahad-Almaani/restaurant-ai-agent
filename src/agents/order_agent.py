@@ -132,7 +132,8 @@ Provide a structured response that's both informative and conversational.
             return result
             
         except Exception as e:
-            print(f"Order processing error: {e}")
+            if os.getenv("DEBUG_MODE", "false").lower() == "true":
+                print(f"Order processing error: {e}")
             return self._fallback_order_processing(customer_input, extracted_items)
 
     def _fallback_order_processing(self, customer_input: str, extracted_items: List[Dict[str, Any]]) -> OrderProcessingResult:
