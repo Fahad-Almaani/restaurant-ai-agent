@@ -1,111 +1,63 @@
-# 🍽️ AI Restaurant Agent
+# Restaurant AI Agent 🤖🍽️
 
-A sophisticated AI-powered restaurant ordering system built with LangChain, LangGraph, and Google's Gemini AI. This system provides an intelligent conversational interface for customers to browse menus, place orders, customize items, and receive personalized upselling suggestions.
+A sophisticated multi-agent conversational AI system for restaurant order management, built with LangChain and powered by Google's Gemini AI.
 
-## 🌟 Features
+## Overview
 
-- **Intelligent Menu Display**: AI-powered menu browsing with detailed descriptions and recommendations
-- **Order Management**: Take orders with customizations and modifications
-- **Smart Upselling**: Context-aware suggestions to enhance the dining experience
-- **Conversation Flow**: Structured conversation management using LangGraph
-- **Multiple Agents**: Specialized agents for different tasks (Menu, Order, Upselling, Coordination)
-- **Professional Architecture**: Clean, modular code with separate concerns
-- **Real-time Interaction**: Interactive command-line interface
+This system implements a **router-centric architecture** with intelligent conversation flow management, featuring specialized agents for different aspects of the restaurant ordering process.
 
-## 🏗️ Architecture
-
-The system is built with a modular architecture featuring:
+## 🏗️ System Architecture
 
 ### Core Components
 
-- **Coordinator Agent**: Manages conversation flow and routes requests
-- **Menu Agent**: Handles menu display and item queries
-- **Order Agent**: Processes orders and customizations
-- **Upselling Agent**: Provides intelligent upselling suggestions
+**🤖 Router Agent (Central Hub)**
 
-### LangGraph Workflow
+- Intelligent intent classification (GREETING, ORDERING, BROWSING, etc.)
+- Smart item extraction from natural language
+- Dynamic routing to specialized agents
+- Automatic clarification requests for ambiguous inputs
 
-- Structured conversation nodes for different states
-- Conditional routing based on user intent
-- State management throughout the conversation
+**🎯 Specialized Agents**
 
-### Data Models
+- **🍽️ Menu Agent**: Menu queries, recommendations, item information
+- **🛒 Order Agent**: Order processing with intelligent item extraction
+- **💡 Upselling Agent**: Complementary item suggestions
+- **✅ Finalization Agent**: Order completion and payment
+- **🚚 Delivery Agent**: Delivery/pickup method selection
 
-- Order and OrderItem models with comprehensive functionality
-- Menu models with dietary restrictions and categories
-- Validation tools for input sanitization
-
-## 📁 Project Structure
+**💬 Conversation Flow**
 
 ```
-restaurant-ai-agent/
-├── src/
-│   ├── agents/
-│   │   ├── coordinator_agent.py    # Main conversation coordinator
-│   │   ├── menu_agent.py          # Menu display and queries
-│   │   ├── order_agent.py         # Order processing
-│   │   └── upselling_agent.py     # Upselling suggestions
-│   ├── models/
-│   │   ├── order_models.py        # Order and OrderItem classes
-│   │   └── menu_models.py         # Menu data models
-│   ├── tools/
-│   │   ├── menu_tools.py          # Menu operations
-│   │   ├── order_tools.py         # Order validation and formatting
-│   │   └── validation_tools.py    # Input validation utilities
-│   ├── prompts/
-│   │   ├── menu_agent_prompts.py  # Menu agent system prompts
-│   │   ├── order_agent_prompts.py # Order agent system prompts
-│   │   └── upselling_prompts.py   # Upselling agent prompts
-│   ├── data/
-│   │   ├── menu.json             # Restaurant menu data
-│   │   └── upselling_rules.json  # Upselling rules and suggestions
-│   ├── graph/
-│   │   └── restaurant_graph.py    # LangGraph workflow definition
-│   └── main.py                    # Main application entry point
-├── config.py                      # Configuration settings
-├── requirements.txt               # Python dependencies
-├── .env.example                  # Environment variables example
-└── README.md                     # This file
+START → Router Agent → Specialized Agents → Conversation Stages → Router Agent → END
+```
+
+### Project Structure
+
+```
+src/
+├── config.py                 # Configuration settings
+├── main.py                   # Main application entry point
+├── agents/                   # Specialized AI agents
+│   ├── router_agent.py       # Central routing logic
+│   ├── menu_agent.py         # Menu handling
+│   ├── order_agent.py        # Order processing
+│   └── upselling_agent.py    # Upselling logic
+├── graph/                    # Conversation flow graph
+│   └── restaurant_graph.py   # Graph implementation
+├── models/                   # Data models
+│   ├── menu_models.py        # Menu data structures
+│   ├── order_models.py       # Order data structures
+│   └── shared_memory.py      # Shared state management
+├── data/                     # Configuration data
+│   ├── menu.json            # Restaurant menu
+│   └── upselling_rules.json # Upselling rules
+├── tools/                    # Utility functions
+└── prompts/                  # AI prompts
 ```
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Python 3.8+
-- Google API Key for Gemini
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd restaurant-ai-agent
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set up environment variables**
-
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your Google API key
-   ```
-
-4. **Run the application**
-   ```bash
-   cd src
-   python main.py
-   ```
-
-## 🔧 Configuration
-
-### Environment Variables
+### 1. Environment Setup
 
 Create a `.env` file in the root directory:
 
@@ -113,158 +65,87 @@ Create a `.env` file in the root directory:
 GOOGLE_API_KEY=your_google_api_key_here
 ```
 
-### Menu Customization
+**Get your Google API Key:**
 
-Edit `src/data/menu.json` to customize the restaurant menu with your items, prices, and descriptions.
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key
+3. Copy and paste it into your `.env` file
 
-### Upselling Rules
+### 2. Install Dependencies
 
-Modify `src/data/upselling_rules.json` to adjust upselling suggestions and combo deals.
+```bash
+pip install -r requirements.txt
+```
 
-## 💬 Usage Examples
+### 3. Run the Application
 
-### Basic Conversation Flow
+```bash
+python src/main.py
+```
 
-1. **Welcome & Menu Display**
+## ⚙️ Configuration
 
-   ```
-   Customer: "Hi, I'd like to see your menu"
-   AI: [Displays formatted menu with categories]
-   ```
+### Model Configuration
 
-2. **Order Placement**
+Edit `src/config.py` to customize the AI model:
 
-   ```
-   Customer: "I'll have a burger and fries"
-   AI: [Processes order, confirms items]
-   ```
+```python
+class Config:
+    # AI Model Configuration
+    MODEL_NAME = "gemma-3-27b-it"        # Available: gemma-3-27b-it, gemini-pro, etc.
+    MODEL_TEMPERATURE = 0.7              # Creativity level (0.0-1.0)
+    MAX_TOKENS = 1000                    # Response length limit
 
-3. **Upselling**
+    # Application Settings
+    MAX_ORDER_ITEMS = 5                  # Maximum items per order
+    UPSELLING_THRESHOLD = 3              # Minimum items for upselling
+    TIMEOUT_DURATION = 30                # User response timeout (seconds)
+```
 
-   ```
-   AI: "Would you like to add a drink to complete your meal?"
-   Customer: "Yes, I'll take a Coke"
-   ```
+### Available Models
 
-4. **Order Confirmation**
-   ```
-   AI: [Shows final order with total]
-   Customer: "That's all"
-   AI: [Confirms order completion]
-   ```
+- `gemma-3-27b-it` (Default) - Balanced performance and speed
+- `gemini-pro` - Advanced reasoning capabilities
+- `gemini-pro-vision` - Multimodal support
 
-## 🤖 AI Agents Details
+## 🎯 Key Features
 
-### Menu Agent
+- **🧠 Intelligent Routing**: Context-aware conversation management
+- **🍽️ Smart Ordering**: Natural language item extraction ("2 burgers and 3 cokes")
+- **💡 Dynamic Upselling**: Context-based recommendations
+- **🔄 Multi-turn Conversations**: Maintains conversation context
+- **🆘 Human Intervention**: Automatic escalation for complex queries
+- **📊 Order Analytics**: Comprehensive order tracking
+- **🎨 Flexible Flow**: Adaptive conversation management
 
-- Displays categorized menu with prices and descriptions
-- Handles dietary restriction filtering
-- Provides detailed item information
-- Suggests popular items and chef recommendations
+## 💡 Usage Examples
 
-### Order Agent
+```python
+from src.main import RestaurantAIAgent
 
-- Processes natural language order requests
-- Handles quantity specifications
-- Manages order modifications
-- Validates orders against menu availability
+# Initialize the agent
+agent = RestaurantAIAgent()
 
-### Upselling Agent
+# Start conversation
+response = agent.chat("Hello! I'd like to see your menu")
+print(response)
 
-- Context-aware suggestions based on current order
-- Combo deal recommendations
-- Dietary-specific upsells
-- Graceful handling of customer responses
+# Place an order
+response = agent.chat("I want 2 burgers and a large coke")
+print(response)
 
-### Coordinator Agent
+# Complete order
+response = agent.chat("I'll take delivery please")
+print(response)
+```
 
-- Intent recognition and routing
-- Conversation state management
-- Agent orchestration
-- Error handling and fallbacks
+## 🔧 Development
 
-## 🔄 Conversation States
+### Graph Visualization
 
-The system manages conversation through these states:
+Use the included Jupyter notebook to visualize the conversation flow:
 
-- **Greeting**: Initial welcome and introduction
-- **Menu Browsing**: Menu display and item queries
-- **Ordering**: Order placement and modifications
-- **Upselling**: Suggestion and additional item offers
-- **Confirming**: Final order review and confirmation
-- **Completed**: Order finalization
+```bash
+jupyter notebook graph.ipynb
+```
 
-## 🛠️ Development
-
-### Adding New Menu Items
-
-1. Update `src/data/menu.json` with new items
-2. Follow the existing JSON structure
-3. Include all required fields (name, price, description, category)
-
-### Extending Functionality
-
-1. Create new agent classes inheriting from base patterns
-2. Add corresponding tools in the `tools/` directory
-3. Update the coordinator routing logic
-4. Add new prompts in the `prompts/` directory
-
-### Custom Prompts
-
-Modify prompt templates in the `prompts/` directory to customize AI behavior and responses.
-
-## 📊 Features in Detail
-
-### Order Management
-
-- Real-time order tracking
-- Automatic price calculation with tax
-- Order modification support
-- Comprehensive order validation
-
-### Menu System
-
-- Hierarchical categorization
-- Dietary restriction support
-- Popular item highlighting
-- Chef recommendation system
-
-### Upselling Intelligence
-
-- Rule-based suggestions
-- Order value optimization
-- Customer preference learning
-- Respectful decline handling
-
-## 🔮 Future Enhancements
-
-- Web interface integration
-- Database persistence
-- Payment processing integration
-- Multi-language support
-- Voice interface capabilities
-- Analytics and reporting
-- Customer preference learning
-- Integration with POS systems
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For support, please open an issue in the GitHub repository or contact the development team.
-
-## 🙏 Acknowledgments
-
-- Built with LangChain and LangGraph
-- Powered by Google's Gemini AI
-- Inspired by modern restaurant technology solutions
